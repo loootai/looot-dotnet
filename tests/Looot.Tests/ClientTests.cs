@@ -677,7 +677,7 @@ public class HardeningTests
         await client.RunAsync(new RunRequest { EndpointId = "e", Input = new { Domain = "x" } });
         using var doc = JsonDocument.Parse(h.Requests[0].Body!);
         Assert.Equal("x", doc.RootElement.GetProperty("input").GetProperty("Domain").GetString());
-        Assert.Throws<ArgumentException>(() => client.RunAsync(new RunRequest { EndpointId = "e", IdempotencyKey = "Jos\u00e9" }));
+        Assert.Throws<ArgumentException>(() => { _ = client.RunAsync(new RunRequest { EndpointId = "e", IdempotencyKey = "Jos\u00e9" }); });
     }
 
     [Fact]
