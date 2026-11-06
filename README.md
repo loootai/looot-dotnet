@@ -114,6 +114,8 @@ The client retries 429, the retryable 503 codes, network errors and timeouts up 
 the same key. It waits `Retry-After` when the gateway sends it (capped at 30 s), else a short
 backoff. It never retries other 4xx answers. `MaxRetries = 0` turns retries off.
 
+If you pass no key, the SDK generates one and puts it on `LoootException.IdempotencyKey`, so you can retry the same run. For paid runs, build your own key anyway.
+
 After a failed run, or a 402, run again with a new key. The same key only replays the first
 answer.
 

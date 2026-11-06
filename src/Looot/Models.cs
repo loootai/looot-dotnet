@@ -92,12 +92,12 @@ public sealed record CatalogOverview : LoootResponse
 /// <summary>Counts of the catalog.</summary>
 public sealed record CatalogTotals : OpenObject
 {
-    public long Categories { get; init; }
-    public long Platforms { get; init; }
-    public long Jobs { get; init; }
-    public long Providers { get; init; }
-    public long Endpoints { get; init; }
-    public long RunnableEndpoints { get; init; }
+    public double? Categories { get; init; }
+    public double? Platforms { get; init; }
+    public double? Jobs { get; init; }
+    public double? Providers { get; init; }
+    public double? Endpoints { get; init; }
+    public double? RunnableEndpoints { get; init; }
 }
 
 /// <summary>One job. Prices are USD; per call and per result are never compared.</summary>
@@ -107,9 +107,9 @@ public sealed record OverviewJob : OpenObject
     public string? Title { get; init; }
     public string? Category { get; init; }
     public string? Platform { get; init; }
-    public long ProviderCount { get; init; }
-    public long EndpointCount { get; init; }
-    public long RunnableCount { get; init; }
+    public double? ProviderCount { get; init; }
+    public double? EndpointCount { get; init; }
+    public double? RunnableCount { get; init; }
     public double? CheapestPerCall { get; init; }
     public double? CheapestPerResult { get; init; }
 }
@@ -165,7 +165,7 @@ public sealed record CatalogParameter : OpenObject
 {
     public string Name { get; init; } = "";
     public string? Location { get; init; }
-    public bool Required { get; init; }
+    public bool? Required { get; init; }
     public string? Description { get; init; }
 }
 
@@ -247,8 +247,8 @@ public sealed record CatalogEndpoint : OpenObject
 public sealed record Works : OpenObject
 {
     public double? Rate { get; init; }
-    public long? Runs { get; init; }
-    public long? P50Ms { get; init; }
+    public double? Runs { get; init; }
+    public double? P50Ms { get; init; }
     public bool? Thin { get; init; }
 }
 
@@ -439,7 +439,7 @@ public sealed record Run : LoootResponse
 /// <summary>The final charge of a run.</summary>
 public sealed record RunPricing : OpenObject
 {
-    public long? FinalChargeMicros { get; init; }
+    public double? FinalChargeMicros { get; init; }
 }
 
 /// <summary>Why a run failed. This is data on the run, not an exception.</summary>
@@ -453,7 +453,7 @@ public sealed record RunError : OpenObject
     /// <summary>provider, gateway or customer.</summary>
     public string? WhoseError { get; init; }
     /// <summary>True when a new run with a new key may succeed.</summary>
-    public bool Retryable { get; init; }
+    public bool? Retryable { get; init; }
     /// <summary>One sentence on what to do next. Show it to the user as is.</summary>
     public string? RetryHint { get; init; }
     public JsonElement? Details { get; init; }
@@ -500,14 +500,14 @@ public sealed record Route : OpenObject
 /// <summary>One provider tried by a fallback route.</summary>
 public sealed record RouteAttempt : OpenObject
 {
-    public int N { get; init; }
+    public int? N { get; init; }
     public string EndpointId { get; init; } = "";
     public string? Provider { get; init; }
     public string? Outcome { get; init; }
     public string? Status { get; init; }
     public double? ChargedUsd { get; init; }
     public bool? Billed { get; init; }
-    public long? Ms { get; init; }
+    public double? Ms { get; init; }
     public string? Reason { get; init; }
     public string? Verdict { get; init; }
 }

@@ -82,6 +82,7 @@ public sealed class LoootClient : IDisposable
         _baseUrl = (string.IsNullOrWhiteSpace(options.BaseUrl) ? DefaultBaseUrl : options.BaseUrl).Trim().TrimEnd('/');
         _token = (options.Token ?? Environment.GetEnvironmentVariable("LOOOT_TOKEN") ?? "").Trim();
         var agent = (options.Agent ?? "").Trim();
+        agent = new string(agent.Where(ch => ch >= 0x20 && ch <= 0x7E).ToArray());
         _agent = agent.Length > MaxAgentLength ? agent.Substring(0, MaxAgentLength) : agent;
         _userAgent = "looot-dotnet/" + Version + " dotnet/" + Environment.Version.ToString(3);
         _timeout = options.Timeout is { } t && t > TimeSpan.Zero ? t : DefaultTimeout;
@@ -205,14 +206,18 @@ public sealed class LoootClient : IDisposable
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
         var key = string.IsNullOrEmpty(request.IdempotencyKey) ? "sdk-" + Guid.NewGuid().ToString() : request.IdempotencyKey;
+        if (key.Any(ch => ch < 0x20 || ch > 0x7E))
+        {
+            throw new ArgumentException("The idempotency key must be printable ASCII.", nameof(request));
+        }
         object? fallback = request.Fallback is null ? null : request.Fallback.IsDefault() ? true : request.Fallback;
         var body = new RunBody
         {
             EndpointId = request.EndpointId,
-            Input = request.Input ?? new Dictionary<string, object>(),
+            Input = JsonSerializer.SerializeToElement(request.Input ?? new Dictionary<string, object>()),
             IdempotencyKey = key,
             Fallback = fallback,
-            Output = request.Output,
+            Output = request.Output is null ? null : JsonSerializer.SerializeToElement(request.Output),
         };
         var q = new Query();
         if (request.Wait is > 0) q.Int("wait", request.Wait);
@@ -395,7 +400,15 @@ public sealed class LoootClient : IDisposable
     {
         byte[]? payload = body is null ? null : JsonSerializer.SerializeToUtf8Bytes(body, body.GetType(), JsonOptions);
         var raw = await SendRawAsync(method, path, query?.ToString(), payload, auth, idempotencyKey, ct).ConfigureAwait(false);
-        return Decode<T>(raw, method.Method, path);
+        try
+        {
+            return Decode<T>(raw, method.Method, path);
+        }
+        catch (LoootException ex)
+        {
+            ex.IdempotencyKey = idempotencyKey;
+            throw;
+        }
     }
 
     private static T Decode<T>(RawResponse raw, string method, string path) where T : LoootResponse, new()
@@ -406,7 +419,14 @@ public sealed class LoootClient : IDisposable
             using var doc = JsonDocument.Parse(raw.Body);
             var value = doc.RootElement.Deserialize<T>(JsonOptions);
             if (value is null) throw new JsonException("The body is null.");
-            value.Raw = doc.RootElement.Clone();
+            var root = doc.RootElement.Clone();
+            value.Raw = root;
+            switch (value)
+            {
+                case PublicCatalogPage page: SetRaw(page.Items, root, "items"); break;
+                case RunList list: SetRaw(list.Runs, root, "runs"); break;
+                case CatalogComparison cmp when cmp.Items is not null: SetRaw(cmp.Items, root, "items"); break;
+            }
             return value;
         }
         catch (JsonException ex)
@@ -418,6 +438,17 @@ public sealed class LoootClient : IDisposable
                 Method = method,
                 Path = path,
             };
+        }
+    }
+
+    private static void SetRaw<TItem>(List<TItem> items, JsonElement root, string name) where TItem : LoootResponse
+    {
+        if (!root.TryGetProperty(name, out var arr) || arr.ValueKind != JsonValueKind.Array) return;
+        var i = 0;
+        foreach (var el in arr.EnumerateArray())
+        {
+            if (i >= items.Count) break;
+            items[i++].Raw = el.Clone();
         }
     }
 
@@ -468,6 +499,7 @@ public sealed class LoootClient : IDisposable
                 error = LoootException.Transport("network_error", $"{method.Method} {path} could not reach looot: {ex.Message}", method.Method, path, ex);
             }
 
+            error.IdempotencyKey = idempotencyKey;
             if (attempt >= _maxRetries || !error.ShouldAutoRetry()) throw error;
             await Task.Delay(RetryDelay(error, attempt), ct).ConfigureAwait(false);
         }

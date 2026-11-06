@@ -658,6 +658,41 @@ public class ErrorTests
     }
 }
 
+public class HardeningTests
+{
+    [Fact]
+    public async Task Null_and_fractional_numbers_in_typed_fields_do_not_break_a_run()
+    {
+        var h = new FakeHandler().Reply(HttpStatusCode.OK, """{"runId":"r","status":"completed","error":{"code":"x","retryable":null},"route":{"attempts":[{"n":null,"endpointId":"e","ms":380.5}]},"pricing":{"finalChargeMicros":12.5}}""");
+        using var client = Make.Client(h);
+        var run = await client.RunAsync(new RunRequest { EndpointId = "e" });
+        Assert.Equal(380.5, run.Route!.Attempts![0].Ms);
+    }
+
+    [Fact]
+    public async Task Input_keys_keep_their_case_and_non_ascii_keys_are_refused()
+    {
+        var h = new FakeHandler().Reply(HttpStatusCode.OK, """{"runId":"r","status":"completed"}""");
+        using var client = Make.Client(h);
+        await client.RunAsync(new RunRequest { EndpointId = "e", Input = new { Domain = "x" } });
+        using var doc = JsonDocument.Parse(h.Requests[0].Body!);
+        Assert.Equal("x", doc.RootElement.GetProperty("input").GetProperty("Domain").GetString());
+        Assert.Throws<ArgumentException>(() => client.RunAsync(new RunRequest { EndpointId = "e", IdempotencyKey = "Jos\u00e9" }));
+    }
+
+    [Fact]
+    public async Task Errors_carry_the_idempotency_key_and_nested_items_have_Raw()
+    {
+        var h = new FakeHandler().Reply(HttpStatusCode.Created, """{"runs":[{"runId":"a","status":"completed","z":1}],"nextCursor":null}""")
+            .Reply(HttpStatusCode.PaymentRequired, """{"error":{"code":"insufficient_balance","message":"m"}}""");
+        using var client = Make.Client(h);
+        var list = await client.ListRunsAsync();
+        Assert.Equal(1, list.Runs[0].Raw.GetProperty("z").GetInt32());
+        var ex = await Assert.ThrowsAsync<LoootException>(() => client.RunAsync(new RunRequest { EndpointId = "e" }));
+        Assert.StartsWith("sdk-", ex.IdempotencyKey);
+    }
+}
+
 public class RetryTests
 {
     private static string Envelope(string code) => ErrorTests.Envelope(code);

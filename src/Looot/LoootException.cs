@@ -41,6 +41,9 @@ public class LoootException : Exception
     /// <summary>The body as text, when there was one.</summary>
     public string? BodyText { get; init; }
 
+    /// <summary>The idempotency key the failed request carried. Reuse it to retry a paid run safely.</summary>
+    public string? IdempotencyKey { get; internal set; }
+
     /// <summary>The HTTP method of the request that failed.</summary>
     public string? Method { get; init; }
 
