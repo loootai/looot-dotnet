@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Looot</AssemblyName>
+    <RootNamespace>Looot</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <Deterministic>true</Deterministic>
+
+    <PackageId>Looot</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>looot</Authors>
+    <Company>looot</Company>
+    <Description>.NET client for the looot API: one token for data providers, runs with fallback, typed errors.</Description>
+    <PackageTags>looot;api-client;ai-agents;data-enrichment;lead-generation;gtm;sdk</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://looot.ai</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/loootai/looot-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

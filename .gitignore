@@ -1,0 +1,13 @@
+bin/
+obj/
+artifacts/
+*.nupkg
+*.snupkg
+.vs/
+.idea/
+*.user
+TestResults/
+.env
+.env.*
+!.env.example
+.DS_Store

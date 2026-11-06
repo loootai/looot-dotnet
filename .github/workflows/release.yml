@@ -1,0 +1,44 @@
+name: Release
+
+# Push a tag like v0.1.0 to test, pack and publish to nuget.org.
+# Publishing uses NuGet trusted publishing (OIDC): no API key is stored in this repo.
+# The repo variable NUGET_USER must hold the nuget.org profile name that owns the Looot package.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-dotnet@v5.3.0
+        with:
+          dotnet-version: "8.0.x"
+      - name: Check the tag matches the project version and LoootClient.Version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          proj="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Looot/Looot.csproj)"
+          code="$(sed -n 's/.*const string Version = "\(.*\)";/\1/p' src/Looot/LoootClient.cs)"
+          echo "tag=$tag project=$proj code=$code"
+          test "$tag" = "$proj" && test "$tag" = "$code"
+      - name: Test
+        run: dotnet test tests/Looot.Tests -c Release
+      - name: Pack
+        run: dotnet pack src/Looot -c Release -o artifacts
+      - name: NuGet login (OIDC)
+        id: login
+        uses: NuGet/login@v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: Push to nuget.org
+        run: dotnet nuget push "artifacts/Looot.${GITHUB_REF_NAME#v}.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: GitHub release
+        run: gh release create "$GITHUB_REF_NAME" artifacts/Looot.*.nupkg --title "$GITHUB_REF_NAME" --notes "See CHANGELOG.md"
+        env:
+          GH_TOKEN: ${{ github.token }}
